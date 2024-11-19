@@ -85,56 +85,66 @@ class LaneDetector:
         return l_pos, r_pos, out_img
 
     def _detect_initial_lanes(self, histogram, mid_point):
-        """
-        전체 영역에서 초기 차선 위치 검출
-
-        Args:
-            histogram (ndarray): 현재 윈도우의 히스토그램
-            mid_point (int): 이미지 중앙점
-
-        Returns:
-            tuple: (leftx_current, rightx_current) 좌/우 차선 x좌표
-        """
-        # 좌측 영역 검출
+        """초기 차선 위치 검출 - 파라미터 조정"""
+        MIN_PEAK_VALUE = 255 * self.min_points  # 더 낮은 임계값 적용
+        
+        # 좌측 차선 검출
         left_histogram = histogram[:mid_point]
         left_max = np.argmax(left_histogram)
-        leftx_current = left_max if np.max(left_histogram) > MIN_PIXELS * 255 else None
+        leftx_current = left_max if np.max(left_histogram) > MIN_PEAK_VALUE else None
 
-        # 우측 영역 검출
-        right_histogram = histogram[mid_point:]
-        right_max = np.argmax(right_histogram) + mid_point
-        rightx_current = right_max if np.max(right_histogram) > MIN_PIXELS * 255 else None
+        # 우측 차선 검출 - 검색 영역 확장
+        right_start = mid_point - 50  # 중앙선 기준 좌측으로 확장
+        right_end = histogram.shape[0]
+        right_histogram = histogram[right_start:right_end]
+        right_max = np.argmax(right_histogram) + right_start
+        rightx_current = right_max if np.max(right_histogram) > MIN_PEAK_VALUE else None
 
         return leftx_current, rightx_current
 
     def _detect_continuous_lanes(self, histogram, lx, rx, img_width):
-        """
-        이전 검출 결과를 기반으로 지역 검색
-
-        Args:
-            histogram (ndarray): 현재 윈도우의 히스토그램
-            lx (list): 이전 좌측 차선 x좌표 목록
-            rx (list): 이전 우측 차선 x좌표 목록
-            img_width (int): 이미지 너비
-
-        Returns:
-            tuple: (leftx_current, rightx_current) 좌/우 차선 x좌표
-        """
+        """연속 프레임 검출 - 배열 크기 체크 추가"""
         leftx_current = rightx_current = None
 
-        # 좌측 차선 검출
         if self.before_l_detected and lx:
             leftx_last = lx[-1]
             left_start = max(0, leftx_last - WINDOW_MARGIN)
             left_end = min(img_width, leftx_last + WINDOW_MARGIN)
-            leftx_current = self._calculate_window_center(histogram, left_start, left_end)
+            
+            # 배열 크기 체크 추가
+            left_histogram = histogram[left_start:left_end]
+            if len(left_histogram) > 0:  # 빈 배열 체크
+                if np.max(left_histogram) > MIN_PIXELS * 255:
+                    leftx_current = np.argmax(left_histogram) + left_start
+            
+            # 우측 차선 검색
+            if not self.before_r_detected:
+                right_start = min(img_width, leftx_last + LANE_WIDTH)
+                right_end = min(img_width, right_start + 2 * WINDOW_MARGIN)
+                right_histogram = histogram[right_start:right_end]
+                if len(right_histogram) > 0:  # 빈 배열 체크
+                    if np.max(right_histogram) > MIN_PIXELS * 255:
+                        rightx_current = np.argmax(right_histogram) + right_start
 
-        # 우측 차선 검출
         if self.before_r_detected and rx:
             rightx_last = rx[-1]
             right_start = max(0, rightx_last - WINDOW_MARGIN)
             right_end = min(img_width, rightx_last + WINDOW_MARGIN)
-            rightx_current = self._calculate_window_center(histogram, right_start, right_end)
+            
+            # 배열 크기 체크 추가
+            right_histogram = histogram[right_start:right_end]
+            if len(right_histogram) > 0:  # 빈 배열 체크
+                if np.max(right_histogram) > MIN_PIXELS * 255:
+                    rightx_current = np.argmax(right_histogram) + right_start
+            
+            # 좌측 차선 검색
+            if not self.before_l_detected:
+                left_end = max(0, rightx_last - LANE_WIDTH)
+                left_start = max(0, left_end - 2 * WINDOW_MARGIN)
+                left_histogram = histogram[left_start:left_end]
+                if len(left_histogram) > 0:  # 빈 배열 체크
+                    if np.max(left_histogram) > MIN_PIXELS * 255:
+                        leftx_current = np.argmax(left_histogram) + left_start
 
         return leftx_current, rightx_current
 
