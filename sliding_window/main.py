@@ -44,9 +44,6 @@ def handle_frame(data):
 
         # CLAHE 적용한 이미지
         clahe_image = window.contrast_clihe(frame)
-        
-        # 이진화 테스트 (적응형 임계값)
-        test = window.binary_image_with_adaptivethreshold(clahe_image)
 
         # 이미지 워핑
         warped_image = window.warp_image(clahe_image)
@@ -75,7 +72,6 @@ def handle_frame(data):
         # 이미지 출력
         cv2.imwrite("frame.jpg", frame)
         cv2.imwrite("clahe_image.jpg", clahe_image)
-        cv2.imwrite("test.jpg", test)
         cv2.imwrite("warped image.jpg", warped_image)
         cv2.imwrite("adap_thresh.jpg", lane)
         cv2.imwrite("morph_image.jpg", morphological_transformation_image)
