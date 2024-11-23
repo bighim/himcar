@@ -33,12 +33,12 @@ class SlidingWindow:
         warp_image_width = HALF_WIDTH
         warp_image_height = HALF_HEIGHT
 
-        warp_x_margin = 160
+        warp_x_margin = 240
         warp_y_margin = 3
 
-        src_pts1 = (240 - warp_x_margin, HALF_HEIGHT + 60)
+        src_pts1 = (240 - warp_x_margin, HALF_HEIGHT + 20)
         src_pts2 = (0, IMAGE_HEIGHT - 20)
-        src_pts3 = (400 + warp_x_margin, HALF_HEIGHT + 60)
+        src_pts3 = (400 + warp_x_margin, HALF_HEIGHT + 20)
         src_pts4 = (IMAGE_WIDTH, IMAGE_HEIGHT - 20)
 
         dist_pts1 = (0, 0)

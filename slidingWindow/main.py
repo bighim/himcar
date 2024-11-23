@@ -1,8 +1,10 @@
 import cv2
 import numpy as np
+import scipy as sp
 
 # image_setting.py와 sliding_window.py 모듈에서 필요한 클래스와 함수 가져오기
 from sliding_window import SlidingWindow
+from steering_controller import SteeringController
 
 from flask import Flask
 from flask_socketio import SocketIO, emit
@@ -19,6 +21,9 @@ frame_number = 0
 # 저장 디렉토리 설정
 OUTPUT_DIR = "frames"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+# 전역 변수에 추가
+steering_controller = SteeringController()
 
 @socketio.on('connect')
 def handle_connect():
@@ -58,7 +63,16 @@ def handle_frame(data):
 
         # 슬라이딩 윈도우 적용
         polynomial_image, left_fit, right_fit = window.fit_polynomial(morphological_transformation_image, capture_frame)
+        
+        # polynomial_image 복사
+        steering_visualization = polynomial_image.copy()
+        
+        # 조향 정보를 이미지에 시각화
+        steering_angle = steering_controller.calculate_steering_angle(left_fit, right_fit)
+        steering_visualization = steering_controller.visualize_steering(steering_visualization, steering_angle)
 
+        socketio.emit('data', {'angle': -steering_angle, 'speed': 0.3})
+        
         # 좌우 차선 위치 계산
         if capture_frame % 10 == 0:
             lpos = window.warp_point(window.l_pos)
@@ -85,6 +99,9 @@ def handle_frame(data):
         cv2.imwrite(os.path.join(save_dir, "step5_adaptive_threshold.jpg"), lane)
         cv2.imwrite(os.path.join(save_dir, "step6_morphological.jpg"), morphological_transformation_image)
         cv2.imwrite(os.path.join(save_dir, "step7_polynomial_fitted.jpg"), polynomial_image)
+        cv2.imwrite(os.path.join(save_dir, "step8_steering_visualization.jpg"), steering_visualization)
+        
+        
         
     except Exception as e:
         print(f"프레임 처리 중 오류 발생: {e}")
