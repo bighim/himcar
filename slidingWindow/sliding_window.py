@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import os
 
 # 이미지 크기 정의 (가로, 세로)
 IMAGE_WIDTH = 640
@@ -8,6 +9,10 @@ HALF_WIDTH = 320
 HALF_HEIGHT = 240
 
 image_size = (IMAGE_WIDTH, IMAGE_HEIGHT)
+
+# 이미지 저장 경로 설정
+save_dir = "frames"
+os.makedirs(save_dir, exist_ok=True)
 
 # SlidingWindow 클래스 정의
 class SlidingWindow:
@@ -84,7 +89,9 @@ class SlidingWindow:
     def binary_image_with_adaptivethreshold(self, image):
         # Apply HLS Thresholding
         blur = cv2.GaussianBlur(image, (5, 5), 0)
+        cv2.imwrite(os.path.join(save_dir, "step6_after_gaussian_blur.jpg"), blur)
         img_hls = cv2.cvtColor(blur, cv2.COLOR_BGR2HLS)
+        cv2.imwrite(os.path.join(save_dir, "step7_after_hls.jpg"), img_hls)
         lower_white = np.array([0, 200, 0])  # Adjusted HLS threshold
         upper_white = np.array([255, 255, 255])
         hls_mask = cv2.inRange(img_hls, lower_white, upper_white)
@@ -335,6 +342,7 @@ class SlidingWindow:
 
     def fit_polynomial(self, image, frame):
         out_img = self.draw_sliding_window(image, frame)
+        cv2.imwrite(os.path.join(save_dir, "step10_after_sliding_window.jpg"), out_img)
         cv2.rectangle(out_img, (5, 5), (315, 50), (0, 0, 0), -1)
         
         try:
