@@ -10,7 +10,6 @@ import json
 from threading import Thread
 import logging
 
-
 app = Flask(__name__)
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.ERROR)  # ERROR 레벨 이상만 표시
@@ -87,25 +86,22 @@ def handle_frame(data):
         # 디버깅 이미지 저장
         save_debug_images(frame, processed_frame, cropped_frame, car_num)
         
-        speed = 0.50 if abs(steering_angle - 90) < 10 else 0.40
+        speed = 0.4 if abs(steering_angle) < 10 else 0.35
+        print(distance)
+        if(distance <= 0.4):
+            speed = 0.0
         
         # 하나의 'data' 이벤트로 통합하여 전송
         socketio.emit('data', {
             'speed': speed,
-            'angle': steering_angle - 90
+            'angle': steering_angle
         }, room=sid)
         
     except Exception as e:
         car_num = sid_to_car[sid]
         print(f"{car_num}번 자동차 프레임 처리 중 오류 발생: {e}")
         print(traceback.format_exc())
-        
-def decode_frame(encoded_frame):
-    """Base64로 인코딩된 프레임 데이터를 디코딩"""
-    jpg_data = base64.b64decode(encoded_frame)
-    nparr = np.frombuffer(jpg_data, np.uint8)
-    return cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-
+    
 def process_line(frame):
     """차선 검출 및 조향각 계산"""
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -121,8 +117,8 @@ def process_line(frame):
     roi = cv2.bitwise_and(edges, mask)
 
     contours, _ = cv2.findContours(roi, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    steering_angle = 90  # 기본 조향각
-
+    steering_angle = 0
+    
     left_lines, right_lines = split_contours_by_center(contours, width)
     if left_lines or right_lines:
         steering_angle = calculate_steering_angle(left_lines, right_lines, width)
@@ -151,13 +147,14 @@ def calculate_steering_angle(left_lines, right_lines, width):
     if left_center and right_center:
         mid_x = (left_center + right_center) // 2
         center_offset = mid_x - width // 2
-        angle = 90 - center_offset / (width // 2) * 20
-        return max(0, min(180, angle))
+        # 0도를 기준으로 각도 계산
+        angle = -center_offset / (width // 2) * 20
+        return max(-90, min(90, angle))
     elif left_center:
-        return 68  # 왼쪽 차선만 감지됨
+        return -36  # 왼쪽 차선만 감지됨
     elif right_center:
-        return 113  # 오른쪽 차선만 감지됨
-    return 90
+        return 36  # 오른쪽 차선만 감지됨
+    return 0
 
 def calculate_center_of_mass(lines):
     """윤곽선들의 중심 좌표를 계산"""
