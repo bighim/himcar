@@ -71,7 +71,7 @@ def handle_frame(data):
         steering_angle = steering_controller.calculate_steering_angle(left_fit, right_fit)
         steering_visualization = steering_controller.visualize_steering(steering_visualization, steering_angle)
 
-        socketio.emit('data', {'angle': -steering_angle, 'speed': 0.3})
+        socketio.emit('data', {'angle': -steering_angle, 'speed': 0.4})
         
         # 좌우 차선 위치 계산
         if capture_frame % 10 == 0:
