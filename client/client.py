@@ -10,6 +10,10 @@ from adafruit_pca9685 import PCA9685
 from adafruit_motor import motor, servo
 import time
 import cv2
+import base64
+import json
+
+RUNNING_STATE = False
 
 class CarConfig:
     # GPIO 핀 설정
@@ -19,9 +23,9 @@ class CarConfig:
     ECHO_PIN = 24
     
     # 서보모터 설정
-    CAMERA_HORIZONTAL_DEFAULT = 80
-    CAMERA_VERTICAL_DEFAULT = 70
-    SERVO_STEERING_DEFAULT = 90
+    SERVO_STEERING_DEFAULT = None
+    CAMERA_HORIZONTAL_DEFAULT = None
+    CAMERA_VERTICAL_DEFAULT = None
     SERVO_MIN_PULSE = 500
     SERVO_MAX_PULSE = 2400
     SERVO_RANGE = 160
@@ -35,7 +39,10 @@ class CarConfig:
     CAMERA_SIZE = (640, 480)
     
     # 서버 설정
-    SERVER_URL = 'http://192.168.0.8:5000'
+    SERVER_URL = 'http://192.168.0.x:5000'
+    
+    # 차량 번호
+    CAR_NUMBER = None
 
 class CarController:
     def __init__(self):
@@ -98,6 +105,7 @@ class CarController:
         self.camera = Picamera2()
         self.camera.configure(self.camera.create_preview_configuration(
             main={"format": CarConfig.CAMERA_FORMAT, "size": CarConfig.CAMERA_SIZE}
+            
         ))
         self.camera.start()
     
@@ -109,6 +117,7 @@ class CarController:
         @self.sio.event
         def connect():
             print("서버에 연결되었습니다.")
+            self.sio.emit('register_car', {'car_number': CarConfig.CAR_NUMBER})
             
         @self.sio.event
         def disconnect():
@@ -129,15 +138,30 @@ class CarController:
             
         @self.sio.on('data')
         def on_data(data):
-            self.motor.throttle = data['speed']
-            self.steering.angle = CarConfig.CAMERA_HORIZONTAL_DEFAULT + data['angle']
-    
+            if RUNNING_STATE:
+                self.motor.throttle = data['speed']
+                self.steering.angle = CarConfig.SERVO_STEERING_DEFAULT + data['angle']
+            else:
+                self.motor.throttle = 0
+                
+        @self.sio.on('start_signal')
+        def on_start_signal():
+            print("시작 신호 수신")
+            global RUNNING_STATE
+            RUNNING_STATE = True
+            
+        @self.sio.on('stop_signal')
+        def on_stop_signal():
+            print("정지 신호 수신")
+            global RUNNING_STATE
+            RUNNING_STATE = False
+                
     def cleanup(self):
         print("프로그램 종료 중, 모터 초기화 중...")
         self.motor.throttle = 0
         self.steering.angle = CarConfig.SERVO_STEERING_DEFAULT
-        self.camera_horizontal.angle = CarConfig.CAMERA_HORIZONTAL_DEFAULT
         self.camera_vertical.angle = CarConfig.CAMERA_VERTICAL_DEFAULT
+        self.camera_horizontal.angle = CarConfig.CAMERA_HORIZONTAL_DEFAULT
         self.pca.deinit()
         print("모터 초기화 완료.")
     
@@ -147,12 +171,13 @@ class CarController:
             
             while True:
                 frame = self.camera.capture_array()
-                _, buffer = cv2.imencode('.jpg', frame)
+                _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 30])  # JPEG 압축률 설정
+                encoded_frame = base64.b64encode(buffer).decode('utf-8')
                 distance = self.distance_sensor.distance
-                self.sio.emit('frame', {
-                    'frame': buffer.tobytes(),
-                    'distance': distance
-                })
+                self.sio.emit('frame', json.dumps({
+                    'frame': encoded_frame,
+                    'distance': distance  # 초음파 데이터 포함
+                }))
                 time.sleep(0.1)
                 
         except Exception as e:
