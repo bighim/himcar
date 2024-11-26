@@ -18,7 +18,7 @@ class SteeringController:
         self.cm_per_pixel = self.lane_width_cm / self.lane_width_pixels
         
         # PID 제어 관련
-        self.kp = 0.25  # 기존의 error_scaling_factor 값을 Kp로 사용
+        self.kp = 0.26  # 기존의 error_scaling_factor 값을 Kp로 사용
         self.ki = 0.000  # 누적 오차에 대한 보정
         self.kd = 0.000   # 급격한 변화 방지
         

@@ -48,7 +48,7 @@ try:
     model.eval()
     print("YOLOv5 커스텀 모델이 성공적으로 로드되었습니다.")
     # 모델 설정
-    model.conf = 0.3  # 신뢰도 임계값
+    model.conf = 0.5  # 신뢰도 임계값
     model.max_det = 3  # 최대 검출 객체 수
     model = quantize_dynamic(model, {torch.nn.Linear}, dtype=torch.qint8)
 except Exception as e:
@@ -140,7 +140,7 @@ def handle_frame(data):
         # YOLO 처리
         height = frame.shape[0]
         cropped_frame = frame[:int(height), :]
-        results = model(cropped_frame, size=320)
+        results = model(cropped_frame, size=240)
         yolo_frame = np.squeeze(results.render())
         
         # 차량별 저장 디렉토리에 저장
@@ -168,8 +168,8 @@ def handle_frame(data):
         
         # 10개의 프레임마다 평균 처리 시간 출력
         if car.frame_count % 10 == 0:
-            avg_processing_time = car.get_average_processing_time()
-            print(f"차량 {car_num}: 평균 {avg_processing_time:.3f}초 소요 (프레임 {car.frame_count}개 처리)")
+            avg_processing_time = car.get_processing_time()
+            print(f"차량 {car_num}: {avg_processing_time:.3f}초 소요 (프레임 {car.frame_count}개 처리)")
             socketio.emit('data', {
                 'speed': car.speed,
                 'angle': steering_angle,
@@ -210,8 +210,6 @@ def input_handler():
             print(f"플래튜닝 모드가 {mode_status}되었습니다.")
         else:
             print("잘못된 명령어입니다. 1, 0, 또는 p를 입력하세요.")
-        
-
 
 def process_line(frame, window: SlidingWindow, steering_controller: SteeringController, frame_count, save_dir):
     """

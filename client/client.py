@@ -39,7 +39,7 @@ class CarConfig:
     CAMERA_SIZE = (640, 480)
     
     # 서버 설정
-    SERVER_URL = 'http://192.168.0.x:5000'
+    SERVER_URL = 'http://192.168.0.8:5000'
     
     # 차량 번호
     CAR_NUMBER = None
@@ -112,6 +112,9 @@ class CarController:
     def init_socket(self):
         self.sio = socketio.Client()
         self.setup_socket_events()
+        self.last_stats_time = time.time()
+        self.frame_count = 0
+        self.total_processing_time = 0
     
     def setup_socket_events(self):
         @self.sio.event
@@ -141,6 +144,16 @@ class CarController:
             if RUNNING_STATE:
                 self.motor.throttle = data['speed']
                 self.steering.angle = CarConfig.SERVO_STEERING_DEFAULT + data['angle']
+                
+                # 처리 시간과 프레임 카운트가 포함된 경우에만 통계 업데이트
+                if 'processing_time' in data and 'frame_count' in data:
+                    current_time = time.time()
+                    if current_time - self.last_stats_time >= 1.0:  # 1초마다 출력
+                        print(f"차량 {CarConfig.CAR_NUMBER} 통계:")
+                        print(f"처리된 프레임: {data['frame_count']}")
+                        print(f"평균 처리 시간: {data['processing_time']:.3f}초")
+                        print("-" * 30)
+                        self.last_stats_time = current_time
             else:
                 self.motor.throttle = 0
                 

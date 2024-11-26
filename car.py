@@ -5,39 +5,9 @@ import time
 # image_setting.py와 sliding_window.py 모듈에서 필요한 클래스와 함수 가져오기
 from sliding_window import SlidingWindow
 from steering_controller import SteeringController
-from flask import Flask, request
 
-from flask import Flask
-from flask_socketio import SocketIO, emit
 import numpy as np
 import os
-import traceback
-
-import logging
-import warnings
-import pathlib
-import torch
-import json
-import base64
-from threading import Thread
-
-# 이미지 저장 경로 설정
-SAVE_DIR = "frames"
-
-app = Flask(__name__)
-socketio = SocketIO(app)
-
-log = logging.getLogger('werkzeug')
-log.setLevel(logging.ERROR)  # ERROR 레벨 이상만 표시
-socketio = SocketIO(app)
-
-# 로그 레벨 설정
-warnings.filterwarnings("ignore", category=FutureWarning)
-
-pathlib.PosixPath = pathlib.WindowsPath
-# YOLOv5 저장소 경로와 사용자 정의 가중치 파일 경로
-repo_path = "./yolov5"  # YOLOv5 소스코드가 있는 디렉토리
-model_path = "./best_final.pt"  # 학습된 가중치 파일
 
 # 이미지 저장 경로 설정
 SAVE_DIR = "frames"
@@ -72,7 +42,7 @@ class Car:
         if len(self.processing_times) > 10:
             self.processing_times.pop(0)
             
-    def get_average_processing_time(self):
+    def get_processing_time(self):
         if not self.processing_times:
             return 0
-        return sum(self.processing_times) / len(self.processing_times)
+        return sum(self.processing_times)
